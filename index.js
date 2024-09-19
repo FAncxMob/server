@@ -9,7 +9,15 @@ const PORT = process.env.PORT || 5000;
 const PASSWORD = "fanchongxin";
 
 // 中间件
-app.use(cors());
+// app.use(cors());
+
+// 中间件
+app.use(
+  cors({
+    origin: "https://client-iota-rose.vercel.app", // 允许的来源
+    credentials: true, // 允许发送 cookies
+  })
+);
 app.use(express.json()); // 解析 JSON 数据
 
 app.use(
