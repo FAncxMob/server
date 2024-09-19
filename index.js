@@ -166,7 +166,7 @@ app.post("/api/addMessage", async (req, res) => {
       toUserId,
       fromUserId,
       message,
-      updateDatetime: getCurrentTimeString(),
+      updateDatetime: new Date(),
     });
 
     const savedMessage = await newMessage.save();
