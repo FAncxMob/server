@@ -12,25 +12,27 @@ const PASSWORD = "fanchongxin";
 // app.use(cors());
 
 // 中间件
-app.use(
-  cors({
-    origin: "https://client-iota-rose.vercel.app", // 允许的来源
-    credentials: true, // 允许发送 cookies
-  })
-);
+// 处理 OPTIONS 请求
+app.options("*", cors());
+// app.use(
+//   cors({
+//     origin: "https://client-iota-rose.vercel.app", // 允许的来源
+//     credentials: true, // 允许发送 cookies
+//   })
+// );
 app.use(express.json()); // 解析 JSON 数据
 
-app.use(
-  session({
-    secret: "your-secret-key",
-    resave: false,
-    saveUninitialized: true,
-    store: MongoStore.create({
-      mongoUrl: `mongodb+srv://fancx29:${PASSWORD}@cluster0.shxhe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
-    }),
-    cookie: { secure: false }, // 在生产环境中应设置为 true，需使用 HTTPS
-  })
-);
+// app.use(
+//   session({
+//     secret: "your-secret-key",
+//     resave: false,
+//     saveUninitialized: true,
+//     store: MongoStore.create({
+//       mongoUrl: `mongodb+srv://fancx29:${PASSWORD}@cluster0.shxhe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
+//     }),
+//     cookie: { secure: false }, // 在生产环境中应设置为 true，需使用 HTTPS
+//   })
+// );
 // mongoose.connect(process.env.MONGODB_URI, {
 //   useNewUrlParser: true,
 //   useUnifiedTopology: true,
