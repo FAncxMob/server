@@ -78,22 +78,46 @@ const Message = mongoose.model("Message", MessageSchema);
 // login
 app.post("/api/login", async (req, res) => {
   const { userId, password } = req.body;
-  const user = await User.findOne({ userId });
 
-  if (!user) {
-    return res.json({ message: "用户不存在" });
-  }
-  const user2 = await User.findOne({ userId, password });
+  try {
+    const user = await User.findOne({ userId });
 
-  if (user2) {
-    console.log("Queried user:", user2);
+    if (!user) {
+      return res.json({ message: "用户不存在" });
+    }
 
-    req.session.user = user2; // 将用户信息存入 session
-    return res.json({ message: "登录成功", user });
-  } else {
-    return res.json({ message: "密码错误" });
+    const user2 = await User.findOne({ userId, password });
+
+    if (user2) {
+      console.log("Queried user:", user2);
+      req.session.user = user2; // 将用户信息存入 session
+      return res.json({ message: "登录成功", user });
+    } else {
+      return res.json({ message: "密码错误" });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "服务器错误" });
   }
 });
+// app.post("/api/login", async (req, res) => {
+//   const { userId, password } = req.body;
+//   const user = await User.findOne({ userId });
+
+//   if (!user) {
+//     return res.json({ message: "用户不存在" });
+//   }
+//   const user2 = await User.findOne({ userId, password });
+
+//   if (user2) {
+//     console.log("Queried user:", user2);
+
+//     req.session.user = user2; // 将用户信息存入 session
+//     return res.json({ message: "登录成功", user });
+//   } else {
+//     return res.json({ message: "密码错误" });
+//   }
+// });
 
 // 受保护的路由
 app.get("/api/dashboard", (req, res) => {
@@ -119,48 +143,111 @@ app.get("/api/dashboard", (req, res) => {
 // 查询给登录用户的message
 app.post("/api/fetchMyMessage", async (req, res) => {
   const { toUserId } = req.body;
-  const data = await Message.find({ toUserId }).toArray();
-  res.json(data);
+
+  try {
+    const messages = await Message.find({ toUserId }).exec();
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "服务器错误" });
+  }
 });
+// app.post("/api/fetchMyMessage", async (req, res) => {
+//   const { toUserId } = req.body;
+//   const data = await Message.find({ toUserId }).toArray();
+//   res.json(data);
+// });
 
 // 登录message
 app.post("/api/addMessage", async (req, res) => {
   const { toUserId, fromUserId, message } = req.body;
-  const data = await Message.insertOne({
-    toUserId,
-    fromUserId,
-    message,
-    updateDatetime: getCurrentTimeString(),
-  });
 
-  res.json({ message: "数据保存成功", data });
+  try {
+    const newMessage = new Message({
+      toUserId,
+      fromUserId,
+      message,
+      updateDatetime: getCurrentTimeString(),
+    });
+
+    const savedMessage = await newMessage.save();
+    res.json({ message: "数据保存成功", data: savedMessage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "服务器错误" });
+  }
 });
+// app.post("/api/addMessage", async (req, res) => {
+//   const { toUserId, fromUserId, message } = req.body;
+//   const data = await Message.insertOne({
+//     toUserId,
+//     fromUserId,
+//     message,
+//     updateDatetime: getCurrentTimeString(),
+//   });
+
+//   res.json({ message: "数据保存成功", data });
+// });
 
 // 添加user
 app.post("/api/addUser", async (req, res) => {
   const { userId, password, lvl } = req.body;
-  const result = await User.insertOne({ userId, password, lvl: 0 });
 
-  res.json({ message: "数据保存成功", insertedId: result.insertedId });
+  try {
+    const newUser = new User({ userId, password, lvl });
+    const savedUser = await newUser.save();
+    res.json({ message: "数据保存成功", insertedId: savedUser._id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "服务器错误" });
+  }
 });
+// app.post("/api/addUser", async (req, res) => {
+//   const { userId, password, lvl } = req.body;
+//   const result = await User.insertOne({ userId, password, lvl: 0 });
+
+//   res.json({ message: "数据保存成功", insertedId: result.insertedId });
+// });
 
 // 查看user
 app.get("/api/getUserList", async (req, res) => {
-  // 直接使用 MongoDB 的原生方法查询数据
-  const data = await User.find().toArray();
-  const result = data.map((item) => ({
-    value: item.userId,
-    label: item.nickName,
-  }));
-  res.json(result);
+  try {
+    const users = await User.find().exec();
+    const result = users.map((item) => ({
+      value: item.userId,
+      label: item.nickName,
+    }));
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "服务器错误" });
+  }
 });
+// app.get("/api/getUserList", async (req, res) => {
+//   // 直接使用 MongoDB 的原生方法查询数据
+//   const data = await User.find().toArray();
+//   const result = data.map((item) => ({
+//     value: item.userId,
+//     label: item.nickName,
+//   }));
+//   res.json(result);
+// });
 
 // 查看user
 app.get("/api/getUsers", async (req, res) => {
-  // 直接使用 MongoDB 的原生方法查询数据
-  const data = await User.find().toArray();
-  res.json(data);
+  try {
+    const users = await User.find().exec();
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "服务器错误" });
+  }
 });
+// app.get("/api/getUsers", async (req, res) => {
+//   // 直接使用 MongoDB 的原生方法查询数据
+//   const data = await User.find().toArray();
+//   res.json(data);
+// });
 
 function getCurrentTimeString() {
   const now = new Date();
