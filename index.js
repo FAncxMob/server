@@ -1,5 +1,5 @@
 const express = require("express");
-const session = require("express-session");
+// const session = require("express-session");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
@@ -20,17 +20,17 @@ app.use(
 );
 app.use(express.json()); // 解析 JSON 数据
 
-app.use(
-  session({
-    secret: "your-secret-key",
-    resave: false,
-    saveUninitialized: true,
-    store: MongoStore.create({
-      mongoUrl: `mongodb+srv://fancx29:${PASSWORD}@cluster0.shxhe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
-    }),
-    cookie: { secure: false }, // 在生产环境中应设置为 true，需使用 HTTPS
-  })
-);
+// app.use(
+//   session({
+//     secret: "your-secret-key",
+//     resave: false,
+//     saveUninitialized: true,
+//     store: MongoStore.create({
+//       mongoUrl: `mongodb+srv://fancx29:${PASSWORD}@cluster0.shxhe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
+//     }),
+//     cookie: { secure: false }, // 在生产环境中应设置为 true，需使用 HTTPS
+//   })
+// );
 // mongoose.connect(process.env.MONGODB_URI, {
 //   useNewUrlParser: true,
 //   useUnifiedTopology: true,
@@ -90,7 +90,7 @@ app.post("/api/login", async (req, res) => {
 
     if (user2) {
       console.log("Queried user:", user2);
-      req.session.user = user2; // 将用户信息存入 session
+      // req.session.user = user2; // 将用户信息存入 session
       return res.json({ message: "登录成功", user });
     } else {
       return res.json({ message: "密码错误" });
@@ -121,13 +121,13 @@ app.post("/api/login", async (req, res) => {
 
 // 受保护的路由
 app.get("/api/dashboard", (req, res) => {
-  console.log(req.session.user, "req.session.user");
-  if (req.session.user) {
-    return res.json({
-      message: `欢迎回来, ${req.session.user.userId}`,
-      userId: req.session.user.userId,
-    });
-  }
+  // console.log(req.session.user, "req.session.user");
+  // if (req.session.user) {
+  //   return res.json({
+  //     message: `欢迎回来, ${req.session.user.userId}`,
+  //     userId: req.session.user.userId,
+  //   });
+  // }
 
   res.json({ message: "未登录" });
 });
