@@ -85,7 +85,6 @@ app.post("/api/login", async (req, res) => {
     if (!user) {
       return res.json({ message: "用户不存在" });
     }
-    console.log("Queried user:", user2);
     const user2 = await User.findOne({ userId, password });
 
     if (user2) {
