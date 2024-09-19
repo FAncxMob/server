@@ -57,19 +57,33 @@ app.get("/", (req, res) => {
   res.send("Hello, world!");
 });
 
+const UserSchema = new mongoose.Schema({
+  userId: String,
+  password: String,
+  lvl: Number,
+  nickName: String,
+});
+
+const User = mongoose.model("User", UserSchema);
+
+const MessageSchema = new mongoose.Schema({
+  toUserId: String,
+  fromUserId: String,
+  message: String,
+  updateDatetime: String,
+});
+
+const Message = mongoose.model("Message", MessageSchema);
+
 // login
 app.post("/api/login", async (req, res) => {
   const { userId, password } = req.body;
-  const user = await mongoose.connection
-    .collection("users")
-    .findOne({ userId });
+  const user = await User.findOne({ userId });
 
   if (!user) {
     return res.json({ message: "用户不存在" });
   }
-  const user2 = await mongoose.connection
-    .collection("users")
-    .findOne({ userId, password });
+  const user2 = await User.findOne({ userId, password });
 
   if (user2) {
     console.log("Queried user:", user2);
@@ -105,17 +119,14 @@ app.get("/api/dashboard", (req, res) => {
 // 查询给登录用户的message
 app.post("/api/fetchMyMessage", async (req, res) => {
   const { toUserId } = req.body;
-  const data = await mongoose.connection
-    .collection("messages")
-    .find({ toUserId })
-    .toArray();
+  const data = await Message.find({ toUserId }).toArray();
   res.json(data);
 });
 
 // 登录message
 app.post("/api/addMessage", async (req, res) => {
   const { toUserId, fromUserId, message } = req.body;
-  const data = await mongoose.connection.collection("messages").insertOne({
+  const data = await Message.insertOne({
     toUserId,
     fromUserId,
     message,
@@ -128,9 +139,7 @@ app.post("/api/addMessage", async (req, res) => {
 // 添加user
 app.post("/api/addUser", async (req, res) => {
   const { userId, password, lvl } = req.body;
-  const result = await mongoose.connection
-    .collection("users")
-    .insertOne({ userId, password, lvl: 0 });
+  const result = await User.insertOne({ userId, password, lvl: 0 });
 
   res.json({ message: "数据保存成功", insertedId: result.insertedId });
 });
@@ -138,7 +147,7 @@ app.post("/api/addUser", async (req, res) => {
 // 查看user
 app.get("/api/getUserList", async (req, res) => {
   // 直接使用 MongoDB 的原生方法查询数据
-  const data = await mongoose.connection.collection("users").find().toArray();
+  const data = await User.find().toArray();
   const result = data.map((item) => ({
     value: item.userId,
     label: item.nickName,
@@ -149,26 +158,7 @@ app.get("/api/getUserList", async (req, res) => {
 // 查看user
 app.get("/api/getUsers", async (req, res) => {
   // 直接使用 MongoDB 的原生方法查询数据
-  const data = await mongoose.connection.collection("users").find().toArray();
-  res.json(data);
-});
-
-// 存储数据 API
-app.post("/api/data", async (req, res) => {
-  const { key, value } = req.body;
-
-  // 直接使用 MongoDB 的原生方法插入数据
-  const result = await mongoose.connection
-    .collection("datas")
-    .insertOne({ key, value });
-
-  res.json({ message: "数据保存成功", insertedId: result.insertedId });
-});
-
-// 获取数据 API
-app.get("/api/data", async (req, res) => {
-  // 直接使用 MongoDB 的原生方法查询数据
-  const data = await mongoose.connection.collection("datas").find().toArray();
+  const data = await User.find().toArray();
   res.json(data);
 });
 
