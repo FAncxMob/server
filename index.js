@@ -81,11 +81,11 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const user = await User.findOne({ userId });
-
+    console.log("Queried user:", user);
     if (!user) {
       return res.json({ message: "用户不存在" });
     }
-
+    console.log("Queried user:", user2);
     const user2 = await User.findOne({ userId, password });
 
     if (user2) {
@@ -212,11 +212,14 @@ app.post("/api/addUser", async (req, res) => {
 // 查看user
 app.get("/api/getUserList", async (req, res) => {
   try {
+    console.log("getUserList START");
     const users = await User.find().exec();
+    console.log("getUserList users", users);
     const result = users.map((item) => ({
       value: item.userId,
       label: item.nickName,
     }));
+    console.log("getUserList result", result);
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -236,10 +239,12 @@ app.get("/api/getUserList", async (req, res) => {
 // 查看user
 app.get("/api/getUsers", async (req, res) => {
   try {
+    console.log("getUsers START");
     const users = await User.find().exec();
+    console.log("getUsers users");
     res.json(users);
   } catch (err) {
-    console.error(err);
+    console.log("getUsers ERR", err);
     res.status(500).json({ message: "服务器错误" });
   }
 });
