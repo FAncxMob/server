@@ -42,7 +42,7 @@ mongoose
     `mongodb+srv://fancx29:${PASSWORD}@cluster0.shxhe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
   )
   .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error(err));
+  .catch((err) => console.log("MongoDB connect err", err));
 
 // // 数据模型
 // const DataSchema = new mongoose.Schema({
