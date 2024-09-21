@@ -254,7 +254,12 @@ app.get("/api/getNovelInfo", async (req, res) => {
       url: `https://ncode.syosetu.com/${ncode}`,
     });
 
-    const response = await axios.get(`https://ncode.syosetu.com/${ncode}`);
+    const response = await axios.get(`https://ncode.syosetu.com/${ncode}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+      },
+    });
     console.error("/api/getNovelInfo:response", response.data);
     if (response.headers["content-type"].includes("text/html")) {
       const result = formatHTML(response.data);
