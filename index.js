@@ -5,6 +5,10 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
 const cheerio = require("cheerio");
+const HttpsProxyAgent = require("https-proxy-agent");
+
+// 设置代理服务器信息
+const proxyAgent = new HttpsProxyAgent("http://localhost:5000"); // 这里是代理服务器的地址和端口
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -255,6 +259,7 @@ app.get("/api/getNovelInfo", async (req, res) => {
     });
 
     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`, {
+      httpsAgent: proxyAgent, // 通过代理发送请求
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
