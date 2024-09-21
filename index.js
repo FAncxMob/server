@@ -14,8 +14,8 @@ const PASSWORD = "fanchongxin";
 // 中间件
 app.use(
   cors({
-    // origin: "http://localhost:3000", // 前端地址
-    origin: "https://client-iota-rose.vercel.app", // 前端地址
+    origin: "http://localhost:3000", // 前端地址
+    // origin: "https://client-iota-rose.vercel.app", // 前端地址
     // origin: REACT_APP_URL, // 前端地址
     credentials: true, // 允许发送 cookies
   })
@@ -249,15 +249,16 @@ app.get("/api/getNovelInfo", async (req, res) => {
   try {
     const { ncode } = req.query;
     // 调用函数拼接
-    console.log("getNovelInfo start!!", {
+    console.log("/api/getNovelInfo:start", {
       query: req.query,
       url: `https://ncode.syosetu.com/${ncode}`,
     });
 
     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`);
-
+    console.error("/api/getNovelInfo:response", response.data);
     if (response.headers["content-type"].includes("text/html")) {
       const result = formatHTML(response.data);
+      console.error("/api/getNovelInfo:formatresult", result);
       res.json(result);
       // console.log(result);
 
@@ -277,7 +278,7 @@ app.get("/api/getNovelInfo", async (req, res) => {
       res.status(400).json({ message: "The requested content is not HTML" });
     }
   } catch (error) {
-    // console.error("Error fetching HTML:", error);
+    console.error("/api/getNovelInfo:err", error);
     res.status(500).json({ message: "Error occurred", error: error.message });
   }
 });
