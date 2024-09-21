@@ -14,8 +14,8 @@ const PASSWORD = "fanchongxin";
 // 中间件
 app.use(
   cors({
-    origin: "http://localhost:3000", // 前端地址
-    // origin: "https://client-iota-rose.vercel.app", // 前端地址
+    // origin: "http://localhost:3000", // 前端地址
+    origin: "https://client-iota-rose.vercel.app", // 前端地址
     // origin: REACT_APP_URL, // 前端地址
     credentials: true, // 允许发送 cookies
   })
