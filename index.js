@@ -1,6 +1,7 @@
 const express = require("express");
 // const session = require("express-session");
 const cors = require("cors");
+const axios = require("axios");
 const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
 
@@ -12,9 +13,9 @@ const PASSWORD = "fanchongxin";
 // 中间件
 app.use(
   cors({
-    origin: "https://client-iota-rose.vercel.app", // 前端地址
+    // origin: "https://client-iota-rose.vercel.app", // 前端地址
     // origin: REACT_APP_URL, // 前端地址
-    // origin: "http://localhost:3000", // 前端地址
+    origin: "http://localhost:3000", // 前端地址
     credentials: true, // 允许发送 cookies
   })
 );
@@ -246,6 +247,22 @@ app.get("/api/getUsers", async (req, res) => {
     console.log("getUsers ERR", err);
     res.status(500).json({ message: "服务器错误" });
   }
+});
+
+app.get("/api/getNovel", async (req, res) => {
+  const { lim, st } = req.query;
+  console.log("getNovel start!!", { lim, st });
+  axios
+    .get(`https://api.syosetu.com/novelapi/api/?out=json&lim=${lim}&st=${st}`)
+    .then((response) => {
+      console.log("length:", response.data.length);
+      // 将第三方 API 返回的 HTML 数据发送给前端
+      res.json(response.data);
+    })
+    .catch((error) => {
+      console.error("Error fetching HTML:", error);
+      res.status(500).json("Error fetching data");
+    });
 });
 // app.get("/api/getUsers", async (req, res) => {
 //   // 直接使用 MongoDB 的原生方法查询数据
