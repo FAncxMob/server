@@ -214,6 +214,37 @@ app.get("/api/getNovel", async (req, res) => {
   }
 });
 
+const formatHTML = (html) => {
+  const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+  // 假设你想提取页面中的标题
+  // 提取信息
+  const title = $("title").text(); // 小说标题
+  const author = $(".p-novel__author a").text().trim(); // 作者
+  const description = $("#novel_ex").text().trim(); // 简介
+  const chapters = [];
+
+  // 获取章节链接和标题
+  $(".p-eplist__subtitle").each((i, element) => {
+    const chapterTitle = $(element).text().trim();
+    const chapterLink = $(element).attr("href");
+    chapters.push({ title: chapterTitle, link: chapterLink });
+  });
+
+  console.log({
+    title,
+    author,
+    description,
+    chapters,
+  });
+
+  return {
+    title,
+    author,
+    description,
+    chapters,
+  };
+};
+
 app.get("/api/getNovelInfo", async (req, res) => {
   try {
     const { ncode } = req.query;
@@ -226,7 +257,9 @@ app.get("/api/getNovelInfo", async (req, res) => {
     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`);
 
     if (response.headers["content-type"].includes("text/html")) {
-      res.send(response.data); // 直接将 HTML 数据发送给前端
+      const result = formatHTML(response.data);
+      res.json(result);
+      // console.log(result);
 
       // const html = response.data;
 
@@ -248,6 +281,77 @@ app.get("/api/getNovelInfo", async (req, res) => {
     res.status(500).json({ message: "Error occurred", error: error.message });
   }
 });
+// app.get("/api/getNovelInfo", async (req, res) => {
+//   try {
+//     const { ncode } = req.query;
+//     // 调用函数拼接
+//     console.log("getNovelInfo start!!", {
+//       query: req.query,
+//       url: `https://ncode.syosetu.com/${ncode}`,
+//     });
+
+//     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`);
+
+//     if (response.headers["content-type"].includes("text/html")) {
+//       res.send(response.data); // 直接将 HTML 数据发送给前端
+
+//       // const html = response.data;
+
+//       // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+
+//       // // 假设你想提取页面中的标题
+//       // const title = $("title").text(); // 获取 <title> 标签中的内容
+//       // console.log(title, "title");
+
+//       // // 返回提取的内容
+//       // res.json({
+//       //   title,
+//       // });
+//     } else {
+//       res.status(400).json({ message: "The requested content is not HTML" });
+//     }
+//   } catch (error) {
+//     // console.error("Error fetching HTML:", error);
+//     res.status(500).json({ message: "Error occurred", error: error.message });
+//   }
+// });
+
+const formatEpDetailHTML = (html) => {
+  const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+
+  const title = $("title").text(); // 小说标题
+  const epTitle = $(".p-novel__title").text().trim();
+  const pArr1 = [];
+  const pArr2 = [];
+
+  $(".p-novel__text--preface p").each((i, element) => {
+    const text = $(element).text().trim();
+    pArr1.push(text);
+    console.log({ i, element, text }, "loopaaa");
+    // chapters.push({ title: chapterTitle, link: chapterLink });
+  });
+
+  $(".p-novel__text:not(.p-novel__text--preface) p").each((i, element) => {
+    const text = $(element).text().trim();
+    pArr2.push(text);
+    console.log({ i, element, text }, "loopaaa");
+    // chapters.push({ title: chapterTitle, link: chapterLink });
+  });
+
+  console.log({
+    title,
+    epTitle,
+    pArr1,
+    pArr2,
+  });
+
+  return {
+    title,
+    epTitle,
+    pArr1,
+    pArr2,
+  };
+};
 
 app.get("/api/getNovelEpInfo", async (req, res) => {
   try {
@@ -263,8 +367,8 @@ app.get("/api/getNovelEpInfo", async (req, res) => {
     );
 
     if (response.headers["content-type"].includes("text/html")) {
-      res.send(response.data); // 直接将 HTML 数据发送给前端
-
+      const result = formatEpDetailHTML(response.data);
+      res.json(result);
       // const html = response.data;
 
       // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
