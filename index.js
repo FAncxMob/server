@@ -5,7 +5,7 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
 const cheerio = require("cheerio");
-const HttpsProxyAgent = require("https-proxy-agent");
+const { HttpsProxyAgent } = require("https-proxy-agent");
 
 // 设置代理服务器信息
 const proxyAgent = new HttpsProxyAgent("http://localhost:5000"); // 这里是代理服务器的地址和端口
@@ -15,11 +15,27 @@ const PORT = process.env.PORT || 5000;
 const REACT_APP_URL = process.env.REACT_APP_URL;
 const PASSWORD = "fanchongxin";
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://client-iota-rose.vercel.app",
+  "http://192.168.10.108:3000",
+  // 其他允许的 origin
+];
+
 // 中间件
 app.use(
   cors({
     // origin: "http://localhost:3000", // 前端地址
-    origin: "https://client-iota-rose.vercel.app", // 前端地址
+    // origin: "http://192.168.10.108:3000", // 前端地址
+    origin: (origin, callback) => {
+      // 检查请求的 origin 是否在允许的列表中
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, origin); // 允许
+      } else {
+        callback(new Error("Not allowed by CORS")); // 拒绝
+      }
+    },
+    // origin: "https://client-iota-rose.vercel.app", // 前端地址
     // origin: REACT_APP_URL, // 前端地址
     credentials: true, // 允许发送 cookies
   })
@@ -228,10 +244,17 @@ const formatHTML = (html) => {
   const chapters = [];
 
   // 获取章节链接和标题
-  $(".p-eplist__subtitle").each((i, element) => {
-    const chapterTitle = $(element).text().trim();
-    const chapterLink = $(element).attr("href");
-    chapters.push({ title: chapterTitle, link: chapterLink });
+  // $(".p-eplist__subtitle").each((i, element) => {
+  //   const chapterTitle = $(element).text().trim();
+  //   const chapterLink = $(element).attr("href");
+  //   chapters.push({ title: chapterTitle, link: chapterLink });
+  // });
+
+  $(".p-eplist__sublist").each((i, element) => {
+    const title = $(element).find(".p-eplist__subtitle").text().trim();
+    const link = $(element).find(".p-eplist__subtitle").attr("href");
+    const updateDatetime = $(element).find(".p-eplist__update").text().trim();
+    chapters.push({ title, link, updateDatetime });
   });
 
   console.log({
@@ -259,7 +282,7 @@ app.get("/api/getNovelInfo", async (req, res) => {
     });
 
     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`, {
-      httpsAgent: proxyAgent, // 通过代理发送请求
+      // httpsAgent: proxyAgent, // 通过代理发送请求
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
@@ -334,6 +357,7 @@ const formatEpDetailHTML = (html) => {
   const epTitle = $(".p-novel__title").text().trim();
   const pArr1 = [];
   const pArr2 = [];
+  const pArr3 = [];
 
   $(".p-novel__text--preface p").each((i, element) => {
     const text = $(element).text().trim();
@@ -342,9 +366,18 @@ const formatEpDetailHTML = (html) => {
     // chapters.push({ title: chapterTitle, link: chapterLink });
   });
 
-  $(".p-novel__text:not(.p-novel__text--preface) p").each((i, element) => {
+  $(
+    ".p-novel__text:not(.p-novel__text--preface):not(.p-novel__text--afterword) p"
+  ).each((i, element) => {
     const text = $(element).text().trim();
     pArr2.push(text);
+    console.log({ i, element, text }, "loopaaa");
+    // chapters.push({ title: chapterTitle, link: chapterLink });
+  });
+
+  $(".p-novel__text--afterword p").each((i, element) => {
+    const text = $(element).text().trim();
+    pArr3.push(text);
     console.log({ i, element, text }, "loopaaa");
     // chapters.push({ title: chapterTitle, link: chapterLink });
   });
@@ -354,6 +387,7 @@ const formatEpDetailHTML = (html) => {
     epTitle,
     pArr1,
     pArr2,
+    pArr3,
   });
 
   return {
@@ -361,6 +395,7 @@ const formatEpDetailHTML = (html) => {
     epTitle,
     pArr1,
     pArr2,
+    pArr3,
   };
 };
 
@@ -432,6 +467,10 @@ function buildUrlWithParams(baseUrl, params) {
 }
 
 // 启动服务器
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// app.listen(PORT, () => {
+//   console.log(`Server running on http://localhost:${PORT}`);
+// });
+
+app.listen(5000, "0.0.0.0", () => {
+  console.log("Server is running on http://0.0.0.0:5000");
 });
