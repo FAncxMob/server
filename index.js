@@ -4,6 +4,7 @@ const cors = require("cors");
 const axios = require("axios");
 const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
+const cheerio = require("cheerio");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,8 +15,8 @@ const PASSWORD = "fanchongxin";
 app.use(
   cors({
     origin: "http://localhost:3000", // 前端地址
-    origin: "https://client-iota-rose.vercel.app", // 前端地址
-    origin: REACT_APP_URL, // 前端地址
+    // origin: "https://client-iota-rose.vercel.app", // 前端地址
+    // origin: REACT_APP_URL, // 前端地址
     credentials: true, // 允许发送 cookies
   })
 );
@@ -100,24 +101,6 @@ app.post("/api/login", async (req, res) => {
     return res.status(500).json({ message: "服务器错误" });
   }
 });
-// app.post("/api/login", async (req, res) => {
-//   const { userId, password } = req.body;
-//   const user = await User.findOne({ userId });
-
-//   if (!user) {
-//     return res.json({ message: "用户不存在" });
-//   }
-//   const user2 = await User.findOne({ userId, password });
-
-//   if (user2) {
-//     console.log("Queried user:", user2);
-
-//     req.session.user = user2; // 将用户信息存入 session
-//     return res.json({ message: "登录成功", user });
-//   } else {
-//     return res.json({ message: "密码错误" });
-//   }
-// });
 
 // 受保护的路由
 app.get("/api/dashboard", (req, res) => {
@@ -132,14 +115,6 @@ app.get("/api/dashboard", (req, res) => {
   res.json({ message: "未登录" });
 });
 
-// // 数据模型
-// const DataSchema = new mongoose.Schema({
-//   toUserId: String,
-//   fromUserId: String,
-//   message: String,
-// });
-// const Message = mongoose.model("message", DataSchema);
-
 // 查询给登录用户的message
 app.post("/api/fetchMyMessage", async (req, res) => {
   const { toUserId } = req.body;
@@ -152,11 +127,6 @@ app.post("/api/fetchMyMessage", async (req, res) => {
     res.status(500).json({ message: "服务器错误" });
   }
 });
-// app.post("/api/fetchMyMessage", async (req, res) => {
-//   const { toUserId } = req.body;
-//   const data = await Message.find({ toUserId }).toArray();
-//   res.json(data);
-// });
 
 // 登录message
 app.post("/api/addMessage", async (req, res) => {
@@ -177,17 +147,6 @@ app.post("/api/addMessage", async (req, res) => {
     res.status(500).json({ message: "服务器错误" });
   }
 });
-// app.post("/api/addMessage", async (req, res) => {
-//   const { toUserId, fromUserId, message } = req.body;
-//   const data = await Message.insertOne({
-//     toUserId,
-//     fromUserId,
-//     message,
-//     updateDatetime: getCurrentTimeString(),
-//   });
-
-//   res.json({ message: "数据保存成功", data });
-// });
 
 // 添加user
 app.post("/api/addUser", async (req, res) => {
@@ -202,12 +161,6 @@ app.post("/api/addUser", async (req, res) => {
     res.status(500).json({ message: "服务器错误" });
   }
 });
-// app.post("/api/addUser", async (req, res) => {
-//   const { userId, password, lvl } = req.body;
-//   const result = await User.insertOne({ userId, password, lvl: 0 });
-
-//   res.json({ message: "数据保存成功", insertedId: result.insertedId });
-// });
 
 // 查看user
 app.get("/api/getUserList", async (req, res) => {
@@ -226,15 +179,6 @@ app.get("/api/getUserList", async (req, res) => {
     res.status(500).json({ message: "服务器错误" });
   }
 });
-// app.get("/api/getUserList", async (req, res) => {
-//   // 直接使用 MongoDB 的原生方法查询数据
-//   const data = await User.find().toArray();
-//   const result = data.map((item) => ({
-//     value: item.userId,
-//     label: item.nickName,
-//   }));
-//   res.json(result);
-// });
 
 // 查看user
 app.get("/api/getUsers", async (req, res) => {
@@ -250,19 +194,96 @@ app.get("/api/getUsers", async (req, res) => {
 });
 
 app.get("/api/getNovel", async (req, res) => {
-  const { lim, st } = req.query;
-  console.log("getNovel start!!", { lim, st });
-  axios
-    .get(`https://api.syosetu.com/novelapi/api/?out=json&lim=${lim}&st=${st}`)
-    .then((response) => {
-      console.log("length:", response.data.length);
-      // 将第三方 API 返回的 HTML 数据发送给前端
-      res.json(response.data);
-    })
-    .catch((error) => {
-      console.error("Error fetching HTML:", error);
-      res.status(500).json("Error fetching data");
+  try {
+    const { lim, st } = req.query;
+    // 调用函数拼接
+    const url = buildUrlWithParams(
+      `https://api.syosetu.com/novelapi/api/`,
+      req.query
+    );
+    console.log("getNovel start!!", { query: req.query, url });
+
+    const result = await axios.get(url);
+
+    console.log("length:", result.data.length);
+    // 将第三方 API 返回的 HTML 数据发送给前端
+    res.json(result.data);
+  } catch (error) {
+    console.error("Error fetching HTML:", error);
+    res.status(500).json("Error fetching data");
+  }
+});
+
+app.get("/api/getNovelInfo", async (req, res) => {
+  try {
+    const { ncode } = req.query;
+    // 调用函数拼接
+    console.log("getNovelInfo start!!", {
+      query: req.query,
+      url: `https://ncode.syosetu.com/${ncode}`,
     });
+
+    const response = await axios.get(`https://ncode.syosetu.com/${ncode}`);
+
+    if (response.headers["content-type"].includes("text/html")) {
+      res.send(response.data); // 直接将 HTML 数据发送给前端
+
+      // const html = response.data;
+
+      // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+
+      // // 假设你想提取页面中的标题
+      // const title = $("title").text(); // 获取 <title> 标签中的内容
+      // console.log(title, "title");
+
+      // // 返回提取的内容
+      // res.json({
+      //   title,
+      // });
+    } else {
+      res.status(400).json({ message: "The requested content is not HTML" });
+    }
+  } catch (error) {
+    // console.error("Error fetching HTML:", error);
+    res.status(500).json({ message: "Error occurred", error: error.message });
+  }
+});
+
+app.get("/api/getNovelEpInfo", async (req, res) => {
+  try {
+    const { ep, ncode } = req.query;
+    // 调用函数拼接
+    console.log("getNovelInfo start!!", {
+      query: req.query,
+      url: `https://ncode.syosetu.com/${ncode}`,
+    });
+
+    const response = await axios.get(
+      `https://ncode.syosetu.com/${ncode}/${ep}`
+    );
+
+    if (response.headers["content-type"].includes("text/html")) {
+      res.send(response.data); // 直接将 HTML 数据发送给前端
+
+      // const html = response.data;
+
+      // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+
+      // // 假设你想提取页面中的标题
+      // const title = $("title").text(); // 获取 <title> 标签中的内容
+      // console.log(title, "title");
+
+      // // 返回提取的内容
+      // res.json({
+      //   title,
+      // });
+    } else {
+      res.status(400).json({ message: "The requested content is not HTML" });
+    }
+  } catch (error) {
+    // console.error("Error fetching HTML:", error);
+    res.status(500).json({ message: "Error occurred", error: error.message });
+  }
 });
 // app.get("/api/getUsers", async (req, res) => {
 //   // 直接使用 MongoDB 的原生方法查询数据
@@ -281,6 +302,18 @@ function getCurrentTimeString() {
   const ss = String(now.getSeconds()).padStart(2, "0"); // 获取秒
 
   return `${yyyy}-${MM}-${DD} ${HH}:${mm}:${ss}`;
+}
+
+function buildUrlWithParams(baseUrl, params) {
+  // 将对象中的键值对转换成 URL 查询字符串
+  const queryString = Object.keys(params)
+    .map(
+      (key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`
+    )
+    .join("&");
+
+  // 如果 baseUrl 已经有查询参数，则加 '&'，否则加 '?'
+  return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}${queryString}`;
 }
 
 // 启动服务器
