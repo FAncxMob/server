@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const MongoStore = require("connect-mongo");
 const cheerio = require("cheerio");
 const { HttpsProxyAgent } = require("https-proxy-agent");
+const { createProxyMiddleware } = require("http-proxy-middleware");
 
 // 设置代理服务器信息
 const proxyAgent = new HttpsProxyAgent("http://localhost:5000"); // 这里是代理服务器的地址和端口
@@ -19,27 +20,31 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://client-iota-rose.vercel.app",
   "http://192.168.10.108:3000",
+  "http://192.168.10.52:3000",
+  "*",
   // 其他允许的 origin
 ];
 
+// http://192.168.10.52:3000/novelEp?ncode=N2710DB
 // 中间件
-app.use(
-  cors({
-    // origin: "http://localhost:3000", // 前端地址
-    // origin: "http://192.168.10.108:3000", // 前端地址
-    origin: (origin, callback) => {
-      // 检查请求的 origin 是否在允许的列表中
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin); // 允许
-      } else {
-        callback(new Error("Not allowed by CORS")); // 拒绝
-      }
-    },
-    // origin: "https://client-iota-rose.vercel.app", // 前端地址
-    // origin: REACT_APP_URL, // 前端地址
-    credentials: true, // 允许发送 cookies
-  })
-);
+app.use(cors());
+// app.use(
+//   cors({
+//     origin: "http://localhost:3000", // 前端地址
+//     // origin: "http://192.168.10.52:3000", // 前端地址
+//     origin: (origin, callback) => {
+//       // 检查请求的 origin 是否在允许的列表中
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         callback(null, origin); // 允许
+//       } else {
+//         callback(new Error("Not allowed by CORS")); // 拒绝
+//       }
+//     },
+//     // origin: "https://client-iota-rose.vercel.app", // 前端地址
+//     // origin: REACT_APP_URL, // 前端地址
+//     credentials: true, // 允许发送 cookies
+//   })
+// );
 app.use(express.json()); // 解析 JSON 数据
 
 // app.use(
@@ -272,53 +277,94 @@ const formatHTML = (html) => {
   };
 };
 
-app.get("/api/getNovelInfo", async (req, res) => {
-  try {
-    const { ncode } = req.query;
-    // 调用函数拼接
-    console.log("/api/getNovelInfo:start", {
-      query: req.query,
-      url: `https://ncode.syosetu.com/${ncode}`,
-    });
+app.use(
+  "/api/getNovelInfo",
+  createProxyMiddleware({
+    target: "https://ncode.syosetu.com", // 目标服务器
+    changeOrigin: true,
+    pathRewrite: (path, req) => {
+      console.log("/api/getNovelInfo-pathRewrite:", req);
+      const ncode = req.query.ncode; // 获取查询参数 ncode
+      return `/${ncode}`; // 重写路径为 ncode
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      console.log("/api/getNovelInfo-onProxyReq:");
+      // 添加请求头
+      proxyReq.setHeader(
+        "User-Agent",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+      );
+      proxyReq.setHeader("Referer", "https://ncode.syosetu.com");
+      proxyReq.setHeader(
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+      );
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      let body = "";
+      console.log("/api/getNovelInfo-onProxyRes:");
+      // 监听响应数据
+      proxyRes.on("data", (chunk) => {
+        body += chunk.toString("utf8"); // 将数据拼接到 body
+      });
 
-    const response = await axios.get(`https://ncode.syosetu.com/${ncode}`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        Referer: "https://ncode.syosetu.com", // 添加Referer
-        Connection: "keep-alive",
-      },
-    });
-    console.error("/api/getNovelInfo:response", response.data);
-    if (response.headers["content-type"].includes("text/html")) {
-      const result = formatHTML(response.data);
-      console.error("/api/getNovelInfo:formatresult", result);
-      res.json(result);
-      // console.log(result);
+      // 响应结束后处理数据
+      proxyRes.on("end", () => {
+        console.log(
+          "/api/getNovelInfo-proxyRes:",
+          proxyRes.headers["content-type"]
+        );
+        // 处理返回的 HTML 数据
+        if (proxyRes.headers["content-type"].includes("text/html")) {
+          const result = formatHTML(body); // 使用你的格式化函数
+          console.log("/api/getNovelInfo-formatHTML:", result);
+          console.error("/api/getNovelInfo:formatresult", result);
+          res.json(result); // 返回格式化后的数据
+        } else {
+          res
+            .status(400)
+            .json({ message: "The requested content is not HTML" });
+        }
+      });
+    },
+    onError: (err, req, res) => {
+      console.error("/api/getNovelInfo:err", err);
+      res
+        .status(500)
+        .json({ message: "Proxy error occurred", error: err.message });
+    },
+  })
+);
 
-      // const html = response.data;
+// app.get("/api/getNovelInfo", async (req, res) => {
+//   try {
+//     const { ncode } = req.query;
 
-      // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
-
-      // // 假设你想提取页面中的标题
-      // const title = $("title").text(); // 获取 <title> 标签中的内容
-      // console.log(title, "title");
-
-      // // 返回提取的内容
-      // res.json({
-      //   title,
-      // });
-    } else {
-      res.status(400).json({ message: "The requested content is not HTML" });
-    }
-  } catch (error) {
-    console.error("/api/getNovelInfo:err", error);
-    res.status(500).json({ message: "Error occurred", error: error.message });
-  }
-});
+//     const response = await axios.get(`https://ncode.syosetu.com/${ncode}`, {
+//       headers: {
+//         "User-Agent":
+//           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+//         Accept:
+//           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+//         "Accept-Encoding": "gzip, deflate, br",
+//         Referer: "https://ncode.syosetu.com", // 添加Referer
+//         Connection: "keep-alive",
+//       },
+//     });
+//     console.error("/api/getNovelInfo:response", response.data);
+//     if (response.headers["content-type"].includes("text/html")) {
+//       const result = formatHTML(response.data);
+//       console.error("/api/getNovelInfo:formatresult", result);
+//       res.json(result);
+//       // console.log(result);
+//     } else {
+//       res.status(400).json({ message: "The requested content is not HTML" });
+//     }
+//   } catch (error) {
+//     console.error("/api/getNovelInfo:err", error);
+//     res.status(500).json({ message: "Error occurred", error: error.message });
+//   }
+// });
 // app.get("/api/getNovelInfo", async (req, res) => {
 //   try {
 //     const { ncode } = req.query;
@@ -403,42 +449,101 @@ const formatEpDetailHTML = (html) => {
   };
 };
 
-app.get("/api/getNovelEpInfo", async (req, res) => {
-  try {
-    const { ep, ncode } = req.query;
-    // 调用函数拼接
-    console.log("getNovelInfo start!!", {
-      query: req.query,
-      url: `https://ncode.syosetu.com/${ncode}`,
-    });
+app.use(
+  "/api/getNovelEpInfo",
+  createProxyMiddleware({
+    target: "https://ncode.syosetu.com", // 目标服务器
+    changeOrigin: true,
+    pathRewrite: (path, req) => {
+      console.log("/api/getNovelEpInfo-pathRewrite:", req);
+      const { ep, ncode } = req.query;
+      return `/${ncode}/${ep}`; // 重写路径为 ncode
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      console.log("/api/getNovelEpInfo-onProxyReq:");
+      // 添加请求头
+      proxyReq.setHeader(
+        "User-Agent",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+      );
+      proxyReq.setHeader("Referer", "https://ncode.syosetu.com");
+      proxyReq.setHeader(
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+      );
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      let body = "";
+      console.log("/api/getNovelEpInfo-onProxyRes:");
+      // 监听响应数据
+      proxyRes.on("data", (chunk) => {
+        body += chunk.toString("utf8"); // 将数据拼接到 body
+      });
 
-    const response = await axios.get(
-      `https://ncode.syosetu.com/${ncode}/${ep}`
-    );
+      // 响应结束后处理数据
+      proxyRes.on("end", () => {
+        console.log(
+          "/api/getNovelEpInfo-proxyRes:",
+          proxyRes.headers["content-type"]
+        );
+        // 处理返回的 HTML 数据
+        if (proxyRes.headers["content-type"].includes("text/html")) {
+          const result = formatEpDetailHTML(body); // 使用你的格式化函数
+          console.log("/api/getNovelEpInfo-formatHTML:", result);
+          console.error("/api/getNovelEpInfo:formatresult", result);
+          res.json(result); // 返回格式化后的数据
+        } else {
+          res
+            .status(400)
+            .json({ message: "The requested content is not HTML" });
+        }
+      });
+    },
+    onError: (err, req, res) => {
+      console.error("/api/getNovelEpInfo:err", err);
+      res
+        .status(500)
+        .json({ message: "Proxy error occurred", error: err.message });
+    },
+  })
+);
 
-    if (response.headers["content-type"].includes("text/html")) {
-      const result = formatEpDetailHTML(response.data);
-      res.json(result);
-      // const html = response.data;
+// app.get("/api/getNovelEpInfo", async (req, res) => {
+//   try {
+//     const { ep, ncode } = req.query;
+//     // 调用函数拼接
+//     console.log("getNovelInfo start!!", {
+//       query: req.query,
+//       url: `https://ncode.syosetu.com/${ncode}`,
+//     });
 
-      // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+//     const response = await axios.get(
+//       `https://ncode.syosetu.com/${ncode}/${ep}`
+//     );
 
-      // // 假设你想提取页面中的标题
-      // const title = $("title").text(); // 获取 <title> 标签中的内容
-      // console.log(title, "title");
+//     if (response.headers["content-type"].includes("text/html")) {
+//       const result = formatEpDetailHTML(response.data);
+//       res.json(result);
+//       // const html = response.data;
 
-      // // 返回提取的内容
-      // res.json({
-      //   title,
-      // });
-    } else {
-      res.status(400).json({ message: "The requested content is not HTML" });
-    }
-  } catch (error) {
-    // console.error("Error fetching HTML:", error);
-    res.status(500).json({ message: "Error occurred", error: error.message });
-  }
-});
+//       // const $ = cheerio.load(html); // 使用 cheerio 解析 HTML
+
+//       // // 假设你想提取页面中的标题
+//       // const title = $("title").text(); // 获取 <title> 标签中的内容
+//       // console.log(title, "title");
+
+//       // // 返回提取的内容
+//       // res.json({
+//       //   title,
+//       // });
+//     } else {
+//       res.status(400).json({ message: "The requested content is not HTML" });
+//     }
+//   } catch (error) {
+//     // console.error("Error fetching HTML:", error);
+//     res.status(500).json({ message: "Error occurred", error: error.message });
+//   }
+// });
 // app.get("/api/getUsers", async (req, res) => {
 //   // 直接使用 MongoDB 的原生方法查询数据
 //   const data = await User.find().toArray();
@@ -475,6 +580,8 @@ function buildUrlWithParams(baseUrl, params) {
 //   console.log(`Server running on http://localhost:${PORT}`);
 // });
 
-app.listen(5000, "0.0.0.0", () => {
-  console.log("Server is running on http://0.0.0.0:5000");
+app.listen(5000, () => {
+  console.log("Server is running on http://localhost:5000");
 });
+
+// http://192.168.10.52:3000
