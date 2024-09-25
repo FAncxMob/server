@@ -302,6 +302,9 @@ app.use(
       );
     },
     onProxyRes: (proxyRes, req, res) => {
+      // 在响应头中设置CORS头部
+      res.setHeader("Access-Control-Allow-Origin", "*"); // 或指定你的前端域名
+
       let body = "";
       console.log("/api/getNovelInfo-onProxyRes:");
       // 监听响应数据
