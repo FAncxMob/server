@@ -9,7 +9,7 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 // 设置代理服务器信息
-const proxyAgent = new HttpsProxyAgent("http://localhost:5000"); // 这里是代理服务器的地址和端口
+const proxyAgent = new HttpsProxyAgent("http://192.168.10.52:5000"); // 这里是代理服务器的地址和端口
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -277,15 +277,16 @@ const formatHTML = (html) => {
   };
 };
 
+// httpsAgent: proxyAgent, // 使用代理
 app.use(
   "/api/getNovelInfo",
   createProxyMiddleware({
-    target: "https://ncode.syosetu.com", // 目标服务器
+    target: "http://192.168.10.52:5000", // 目标服务器
     changeOrigin: true,
     pathRewrite: (path, req) => {
       console.log("/api/getNovelInfo-pathRewrite:", req);
       const ncode = req.query.ncode; // 获取查询参数 ncode
-      return `/${ncode}`; // 重写路径为 ncode
+      return `/api/getNovelInfo?ncode=${ncode}`; // 重写路径为 ncode
     },
     onProxyReq: (proxyReq, req, res) => {
       console.log("/api/getNovelInfo-onProxyReq:");
